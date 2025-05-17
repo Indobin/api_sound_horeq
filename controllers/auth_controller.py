@@ -1,5 +1,5 @@
 from fastapi import HTTPException
-from models.akun_models import RegisterModel, LoginModel
+from models.akun_models import RegisterModel, LoginModel, UpdateAkuntModel
 from app.supabase_client import supabase
 from passlib.context import CryptContext
 from jose import jwt
@@ -70,3 +70,34 @@ def login_akun(user: LoginModel):
         "access_token": token,
         "token_type": "bearer"
     }
+
+def edit_profile(akun_db: dict, data:UpdateAkuntModel):
+  update_dict = {}
+
+  if data.username is not None:
+    update_dict["username"] = data.username
+  if data.email is not None:
+    exist = supabase.table("akun").select("id")\
+      .eq("email", data.email).neq("id", akun_db["id"]).execute()
+    if exist.data:
+      raise HTTPException(
+        status_code=400,
+        detail="Email sudah dipakai"
+      )
+    update_dict["email"] = data.email
+  if data.password is not None:
+    update_dict["password"] = has_password(data.password)
+  if data.nama is not None:
+    update_dict["nama"] = data.nama
+  if data.no_hp is not None:
+    update_dict["no_hp"] = data.no_hp
+  if not update_dict:                # tidak ada yang diubah
+    raise HTTPException(
+        status_code=400,
+        detail="Tidak ada data diperbarui"
+    )
+
+  result = supabase.table("akun").update(update_dict).eq("id", akun_db["id"]).execute()
+  return {
+    "messege": "Profil berhasil diperbarui",
+    "akun": result.data[0]}
