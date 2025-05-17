@@ -1,6 +1,4 @@
-from pydantic import BaseModel, EmailStr, constr
-from enum import Enum
-from typing import Optional
+from .base import BaseModel, EmailStr, constr, Enum, Optional, datetime
 class AkunRole(str, Enum):
  penyelenggara = 'penyelenggara'
  peserta = 'peserta'
@@ -12,7 +10,7 @@ class RegisterModel(BaseModel):
     status: AkunRole
     nama: constr(min_length=3, max_length=100)
     no_hp: constr(min_length=10, max_length=15)
-
+    created_at: Optional[datetime] = None
     class Config:
         json_schema_extra = {
             "example": {
@@ -21,7 +19,8 @@ class RegisterModel(BaseModel):
                 "email": "satya@example.com",
                 "status": "penyelenggara",
                 "nama": "Satya Bintang",
-                "no_hp": "081234567890"
+                "no_hp": "081234567890",
+                "created_at": datetime.now()
             }
         }
 
