@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr, constr
 from enum import Enum
+from typing import Optional
 class AkunRole(str, Enum):
  penyelenggara = 'penyelenggara'
  peserta = 'peserta'
@@ -28,10 +29,19 @@ class LoginModel(BaseModel):
     email: EmailStr
     password: constr(min_length=8)
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "email": "satya@example.com",
-                "password": "securePassword123"
-            }
-        }
+    # class Config:
+    #     json_schema_extra = {
+    #         "example": {
+    #             "email": "satya@example.com",
+    #             "password": "securePassword123"
+    #         }
+    #     }
+
+class UpdateAkuntModel(BaseModel):
+    username: Optional[constr(min_length=3, max_length=30)] = None
+    password: Optional[constr(min_length=8)] = None 
+    email: Optional[EmailStr] = None    
+    nama: Optional[constr(min_length=3, max_length=100)] = None
+    no_hp: Optional[constr(min_length=10, max_length=15)] = None
+
+  

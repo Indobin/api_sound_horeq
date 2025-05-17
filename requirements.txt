@@ -1,7 +1,8 @@
-fastapi
-uvicorn
-python-dotenv
-supabase
+pip install fastapi
+pip install uvicorn
+pip install python-dotenv
+pip install supabase
 # pythonjose[cryptography] 
-python-jose
-passlib[bcrypt] 
+pip install python-jose
+pip install passlib[bcrypt] 
+pip install pydantic[email]
