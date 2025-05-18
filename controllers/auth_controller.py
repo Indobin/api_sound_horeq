@@ -5,7 +5,7 @@ from passlib.context import CryptContext
 from jose import jwt
 import os
 from dotenv import load_dotenv
-
+from datetime import datetime
 load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "secret")
@@ -30,13 +30,15 @@ def register_akun(user: RegisterModel):
    detail="Email sudah terdaftar"
   )
  hashed_pw = has_password(user.password)
+ created = user.created_at or datetime.utcnow()
  result = supabase.table("akun").insert({
   "username": user.username,
   "email": user.email,
   "password": hashed_pw,
   "status": user.status,
   "nama": user.nama,
-  "no_hp": user.no_hp
+  "no_hp": user.no_hp,
+  "created_at": created.isoformat()
  }).execute()
  return {
   "messege": "Registrasi berhasil",
