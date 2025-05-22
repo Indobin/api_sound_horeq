@@ -30,12 +30,12 @@ def register_akun(user: RegisterModel):
    detail="Email sudah terdaftar"
   )
  hashed_pw = has_password(user.password)
- created = user.created_at or datetime.utcnow()
+ created = datetime.utcnow()
  result = supabase.table("akun").insert({
   "username": user.username,
   "email": user.email,
   "password": hashed_pw,
-  "status": user.status,
+  "role_akun_id": user.role_akun,
   "nama": user.nama,
   "no_hp": user.no_hp,
   "created_at": created.isoformat()
@@ -54,7 +54,7 @@ def login_akun(user: LoginModel):
             detail="Akun tidak ditemukan"
         )
 
-    akun = cekAkun.data  # ⬅️ akun dari Supabase, tetap pisah dari `user`
+    akun = cekAkun.data 
 
     if not verify_password(user.password, akun["password"]):
         raise HTTPException(
@@ -65,7 +65,7 @@ def login_akun(user: LoginModel):
     token = create_token({
         "id": akun["id"],
         "email": akun["email"],
-        "status": akun["status"]
+        "role_akun_id": akun["role_akun_id"]
     })
 
     return {
