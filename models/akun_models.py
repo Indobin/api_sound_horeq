@@ -38,5 +38,3 @@ class UpdateAkuntModel(BaseModel):
     email: Optional[EmailStr] = None    
     nama: Optional[constr(min_length=3, max_length=100)] = None
     no_hp: Optional[constr(min_length=10, max_length=15)] = None
-
-  

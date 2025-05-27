@@ -1,4 +1,4 @@
-# from .base import BaseModel, constr, Optional, date, time, Decimal
+from .base import BaseModel, constr, Optional, date, time, Decimal
 
-# class CreateForumModels(BaseModel):
- 
+class CreateForumModels(BaseModel):
+ pesan: str

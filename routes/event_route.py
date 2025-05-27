@@ -3,29 +3,29 @@ from .base import create_event, event_penyelenggara
 from .base import event_peserta, eventId_peserta
 from datetime import date, datetime
 
-router = APIRouter()
+router = APIRouter(prefix="/events", tags=["Events"])
 
-@router.get("/event/peserta")
+@router.get("/peserta")
 async def get_event_peserta(
  akun: dict = Depends(get_current_akun)
  ):
  return await event_peserta(akun)
    
-@router.get("/event/peserta/{id}")   
+@router.get("/peserta/{id}")   
 async def getId_event_peserta(
  event_id: int, 
  akun: dict = Depends(get_current_akun)
  ):
  return await eventId_peserta(event_id, akun)
    
-@router.get("/event/penyelenggara")
+@router.get("/penyelenggara")
 async def get_event_penyelenggara(
  akun: dict = Depends(get_current_akun)
  ):
  return await event_penyelenggara(akun)
       
    
-@router.post("/event")
+@router.post("/create")
 async def create_event_penyelenggara(
  akun: dict = Depends(get_current_akun),
  judul: str = Form(...),

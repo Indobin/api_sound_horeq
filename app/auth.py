@@ -24,9 +24,7 @@ def get_current_akun(
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Token tidak valid / kedaluwarsa")
-
-    # Ambil data akun dari Supabase
     res = supabase.table("akun").select("*").eq("id", akun_id).single().execute()
     if not res.data:
         raise HTTPException(status_code=404, detail="Akun tidak ditemukan")
-    return res.data        # dict akun
+    return res.data       
