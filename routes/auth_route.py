@@ -1,7 +1,7 @@
 from .base import APIRouter, Depends, register_akun, login_akun, edit_profile, get_current_akun
 from .base import RegisterModel, LoginModel, UpdateAkuntModel
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
 @router.post("/register")
 def register(user: RegisterModel):

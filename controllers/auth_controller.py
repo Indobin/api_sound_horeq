@@ -64,13 +64,22 @@ def login_akun(user: LoginModel):
 
     token = create_token({
         "id": akun["id"],
+        "username": akun["username"],
+        "no_hp": akun["no_hp"],
+        "nama": akun["nama"],
         "email": akun["email"],
         "role_akun_id": akun["role_akun_id"]
     })
 
     return {
         "access_token": token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "id": akun["id"],
+        "username": akun["username"],
+        "no_hp": akun["no_hp"],
+        "nama": akun["nama"],
+        "email": akun["email"],
+        "role_akun_id": akun["role_akun_id"]
     }
 
 def edit_profile(akun_db: dict, data:UpdateAkuntModel):

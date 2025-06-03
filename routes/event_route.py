@@ -3,7 +3,7 @@ from .base import create_event, event_penyelenggara
 from .base import event_peserta, eventId_peserta
 from datetime import date, datetime
 
-router = APIRouter(prefix="/events", tags=["Events"])
+router = APIRouter(prefix="/api/events", tags=["Events"])
 
 @router.get("/peserta")
 async def get_event_peserta(

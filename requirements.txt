@@ -1,11 +1,10 @@
-pip install fastapi
-pip install uvicorn
-pip install python-dotenv
-pip install supabase
-# pythonjose[cryptography] 
-pip install python-jose
-pip install passlib[bcrypt] 
-pip install pydantic[email]
-pip install python-multipart
-pip install pytz
-pip install python-dateutil
+fastapi
+uvicorn
+python-dotenv
+supabase
+python-jose[cryptography]
+passlib[bcrypt]
+pydantic[email]
+python-multipart
+pytz
+python-dateutil
