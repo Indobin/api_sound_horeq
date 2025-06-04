@@ -1,4 +1,4 @@
-from .base import BaseModel, constr, Optional, date, time, Decimal
+from .base import BaseModel, constr, Optional, date, time, condecimal
 
 
 class CreateEventModel(BaseModel):
@@ -7,12 +7,12 @@ class CreateEventModel(BaseModel):
     tanggal_event: date
     jam_mulai: time
     durasi_event: int
-    harga_tiket: Decimal
+    harga_tiket: Optional[condecimal(ge=0)] = None
     jumlah_tiket: int
     tipe_tiket: int
     lokasi: constr(min_length=3, max_length=100)
     latitude: float
-    longtitude: float
+    longitude: float
 
     # class Config:
     #     json_schema_extra = {
