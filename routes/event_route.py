@@ -33,7 +33,7 @@ async def create_event_penyelenggara(
  tanggal_event: date = Form(...),
  jam_mulai: str = Form(...),
  durasi_event: int = Form(...),
- harga_tiket: Optional[str] = Form(None),
+ harga_tiket: Optional[str] = Form(0.0),
  jumlah_tiket: int = Form(...),
  tipe_tiket: int = Form(...),
  lokasi: str = Form(...),
@@ -41,7 +41,7 @@ async def create_event_penyelenggara(
  longitude: float = Form(...),
  foto: UploadFile = File(...)
  ):
- harga_decimal = Decimal(harga_tiket) if harga_tiket else None
+ harga_decimal = Decimal(harga_tiket) if harga_tiket else 0.0
  data = CreateEventModel(
         
         judul=judul,

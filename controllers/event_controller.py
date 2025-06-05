@@ -111,7 +111,7 @@ async def create_event(akun: dict, data: CreateEventModel, foto: UploadFile):
             "foto_url": public_url,
             "akun_id": akun["id"],
             "created_at": created.isoformat(),
-            "harga_tiket": float(data.harga_tiket) if data.harga_tiket is not None else None
+            "harga_tiket": float(data.harga_tiket) if data.harga_tiket is not None else 0.0
         }
     
         response = supabase.table("event").insert(event_data).execute()
