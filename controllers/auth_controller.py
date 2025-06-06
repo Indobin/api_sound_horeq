@@ -24,10 +24,16 @@ def create_token(data: dict):
 
 def register_akun(user: RegisterModel):
  cek = supabase.table("akun").select("id").eq("email", user.email).execute()
+ cek1 = supabase.table("akun").select("id").eq("username", user.username).execute()
  if cek.data:
   raise HTTPException(
    status_code=400,
    detail="Email sudah terdaftar"
+  )
+ if cek1.data:
+  raise HTTPException(
+   status_code=400,
+   detail="Username sudah terdaftar"
   )
  hashed_pw = has_password(user.password)
  created = datetime.utcnow()
@@ -46,7 +52,7 @@ def register_akun(user: RegisterModel):
  }
  
 def login_akun(user: LoginModel):
-    cekAkun = supabase.table("akun").select("*").eq("email", user.email).single().execute()
+    cekAkun = supabase.table("akun").select("*").eq("username", user.username).single().execute()
 
     if not cekAkun.data:
         raise HTTPException(
