@@ -21,7 +21,7 @@ class RegisterModel(BaseModel):
         }
 
 class LoginModel(BaseModel):
-    usrname: constr(min_length=5, max_length=30)
+    username: constr(min_length=5, max_length=30)
     password: constr(min_length=8)
 
     # class Config:
