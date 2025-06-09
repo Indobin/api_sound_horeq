@@ -9,3 +9,4 @@ python-multipart
 pytz
 python-dateutil
 mangum
+pycryptodome
