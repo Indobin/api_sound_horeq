@@ -1,11 +1,7 @@
-from fastapi import HTTPException
+from .base import HTTPException, supabase, jwt, load_dotenv, datetime, UploadFile 
 from models.akun_models import RegisterModel, LoginModel, UpdateAkuntModel
-from app.supabase_client import supabase
 from passlib.context import CryptContext
-from jose import jwt
 import os
-from dotenv import load_dotenv
-from datetime import datetime
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 import base64
@@ -15,10 +11,8 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY", "secret")
 ALGORITHM = "HS256"
 
-# Kunci AES dalam format string heksadesimal (64 karakter = 32 bytes)
 AES_KEY_HEX = os.getenv("AES_KEY_HEX")
 
-# Konversi string heksadesimal menjadi bytes yang sebenarnya
 try:
     AES_KEY = codecs.decode(AES_KEY_HEX, 'hex')
 except Exception as e:
@@ -38,23 +32,21 @@ def pad(data: bytes) -> bytes:
 def unpad(data: bytes) -> bytes:
     """Menghapus padding dari data setelah dekripsi."""
     padding_len = data[-1]
-    # Periksa apakah padding valid untuk mencegah serangan padding oracle
     if padding_len < 1 or padding_len > 16 or not all(data[i] == padding_len for i in range(len(data) - padding_len, len(data))):
         raise ValueError("Padding tidak valid atau rusak")
     return data[:-padding_len]
 
-def encrypt_data_aes(data: str) -> str: # Mengubah tipe input menjadi str
+def encrypt_data_aes(data: str) -> str:
     """Mengenkripsi string data menggunakan AES dalam mode CBC."""
-    # Pastikan data yang akan dienkripsi adalah bytes
     data_bytes = data.encode('utf-8')
-    iv = get_random_bytes(16) # Inisialisasi Vektor (IV) harus acak untuk setiap enkripsi
+    iv = get_random_bytes(16) 
     cipher = AES.new(AES_KEY, AES.MODE_CBC, iv)
     padded_data = pad(data_bytes)
     encrypted_data = cipher.encrypt(padded_data)
     # Menggabungkan IV dengan data terenkripsi dan melakukan base64 encode
     return base64.b64encode(iv + encrypted_data).decode('utf-8')
 
-def decrypt_data_aes(encoded_data: str) -> str: # Mengubah nama parameter menjadi encoded_data
+def decrypt_data_aes(encoded_data: str) -> str: 
     """Mendekripsi string data yang dienkripsi AES."""
     try:
         raw = base64.b64decode(encoded_data)
@@ -64,8 +56,8 @@ def decrypt_data_aes(encoded_data: str) -> str: # Mengubah nama parameter menjad
     if len(raw) < 16:
         raise ValueError("Data terenkripsi terlalu pendek untuk berisi IV")
 
-    iv = raw[:16] # Ambil IV dari 16 byte pertama
-    encrypted_payload = raw[16:] # Sisa adalah data terenkripsi
+    iv = raw[:16]
+    encrypted_payload = raw[16:]
 
     cipher = AES.new(AES_KEY, AES.MODE_CBC, iv)
     decrypted_padded_data = cipher.decrypt(encrypted_payload)
@@ -134,8 +126,8 @@ def login_akun(user: LoginModel):
     token = create_token({
         "id": akun["id"],
         "username": akun["username"],
-        "no_hp": no_hp,
-        "nama": nama,
+        # "no_hp": no_hp,
+        # "nama": nama,
         "email": akun["email"],
         "role_akun_id": akun["role_akun_id"]
     })
@@ -145,16 +137,27 @@ def login_akun(user: LoginModel):
         "token_type": "bearer",
         "id": akun["id"],
         "username": akun["username"],
-        "no_hp": akun["no_hp"],
-        "nama": akun["nama"],
+        "no_hp": no_hp,
+        "nama": nama,
         "email": akun["email"],
-        "role_akun_id": akun["role_akun_id"]
+        "role_akun_id": akun["role_akun_id"],
+        "foto_url": akun["profil_url"]
     }
 
-def edit_profile(akun_db: dict, data:UpdateAkuntModel):
+MAX_FILE_SIZE_MB = 1
+MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+SUPABASE_BUCKET = "foto-profil"
+async def edit_profile(akun_db: dict, data:UpdateAkuntModel, foto: UploadFile = None):
   update_dict = {}
 
   if data.username is not None:
+    cek_username = supabase.table("akun").select("id")\
+    .eq("username", data.username).neq("id", akun_db["id"]).execute()
+    if cek_username.data:
+      raise HTTPException(
+        status_code=400,
+        detail="Username sudah dipakai"
+      )
     update_dict["username"] = data.username
   if data.email is not None:
     exist = supabase.table("akun").select("id")\
@@ -168,16 +171,64 @@ def edit_profile(akun_db: dict, data:UpdateAkuntModel):
   if data.password is not None:
     update_dict["password"] = has_password(data.password)
   if data.nama is not None:
-    update_dict["nama"] = data.nama
+    update_dict["nama"] =  encrypt_data_aes(data.nama)
   if data.no_hp is not None:
-    update_dict["no_hp"] = data.no_hp
-  if not update_dict:                # tidak ada yang diubah
+    update_dict["no_hp"] = encrypt_data_aes(data.no_hp)
+  
+  profile_url = None
+  if foto:
+    try:
+      content = await foto.read()
+      if len(content) > MAX_FILE_SIZE_BYTES:
+         raise HTTPException(
+            status_code=400,
+            detail=f"Ukuran foto maksimal {MAX_FILE_SIZE_MB}MB"
+         )
+      file_extension = foto.filename.split(".")[-1]
+      filename = f"{akun_db['id']}_{int(datetime.utcnow().timestamp())}.{file_extension}"
+
+      upload_result = supabase.storage.from_(SUPABASE_BUCKET).upload(
+         filename,
+         content,
+         {"content-type": foto.content_type}
+      )
+      if upload_result and upload_result.get("error"):
+         raise HTTPException(
+            status_code=500,
+            detail=f"Upload foto gagal: {upload_result['error'].get('message', 'Unknown error')}"
+         )
+      
+      public_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(filename)
+      update_dict["profil_url"] = public_url
+    except HTTPException:
+      raise
+    except Exception as e:
+        print(f"Error processing photo upload: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Terjadi kesalahan saat mengunggah foto profil"
+        )
+  if not update_dict:               
     raise HTTPException(
         status_code=400,
-        detail="Tidak ada data diperbarui"
+        detail="Tidak ada data atau foto yang diperbarui"
     )
 
   result = supabase.table("akun").update(update_dict).eq("id", akun_db["id"]).execute()
+  
+  if not result.data:
+      raise HTTPException(
+          status_code=500,
+          detail="Gagal memperbarui profil di database"
+      )
+  updated_akun = result.data[0]
+  updated_nama = decrypt_data_aes(updated_akun["nama"]) if updated_akun["nama"] else None
+  updated_no_hp = decrypt_data_aes(updated_akun["no_hp"]) if updated_akun["no_hp"] else None
+
+  final_photo_url = updated_akun.get("profil_url", None)
+
+
   return {
     "messege": "Profil berhasil diperbarui",
     "akun": result.data[0]}
+

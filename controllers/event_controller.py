@@ -1,5 +1,5 @@
-from .base import HTTPException, supabase, jwt, datetime, os
-from .base import CreateEventModel, load_dotenv, File, UploadFile
+from .base import HTTPException, supabase, datetime
+from .base import CreateEventModel, UploadFile
 # import aiofiles
 async def event_peserta(akun: dict):
     # Cek role peserta
@@ -52,14 +52,14 @@ async def event_penyelenggara(akun: dict):
         response = (
             supabase
             .table("event")
-            .select("id, judul, deskripsi, tanggal_event, jam_mulai, lokasi, harga_tiket")
+            .select("id, judul, deskripsi, tanggal_event, jam_mulai, lokasi, harga_tiket, foto_url, tipe_tiket")
             .eq("akun_id", akun["id"])
             .is_("deleted_at", None)
             .order("created_at", desc=True)
             .execute()
         )
 
-        return {"data": response.data}
+        return response.data
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
