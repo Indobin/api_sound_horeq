@@ -30,7 +30,7 @@ async def eventId_peserta(event_id: int, akun: dict):
         response = (
             supabase
             .table("event")
-            .select("id, judul, deskripsi, tanggal_event, jam_mulai, lokasi, harga_tiket, status_tiket")
+            .select("id, judul, deskripsi, tanggal_event, jam_mulai, lokasi, harga_tiket, foto_url, tipe_tiket, jumlah_tiket, latitude, longitude")
             .eq("id", event_id)
             .is_("deleted_at", None)
             .execute()

@@ -6,6 +6,8 @@ from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 import base64
 import codecs
+from postgrest.exceptions import APIError
+
 load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY", "secret")
@@ -98,6 +100,7 @@ def register_akun(user: RegisterModel):
   "role_akun_id": user.role_akun,
   "nama": nama_encrypted,
   "no_hp": hp_encrypted,
+  "profil_url": None,
   "created_at": created.isoformat()
  }).execute()
  return {
@@ -106,48 +109,46 @@ def register_akun(user: RegisterModel):
  }
  
 def login_akun(user: LoginModel):
-    cekAkun = supabase.table("akun").select("*").eq("username", user.username).single().execute()
+    try:
+      cekAkun = supabase.table("akun").select("*").eq("username", user.username).single().execute()
+      akun = cekAkun.data
+      if not akun:
+          raise HTTPException(
+              status_code=404,
+              detail="Akun tidak ditemukan"
+          )
+      if not verify_password(user.password, akun["password"]):
+          raise HTTPException(
+              status_code=401,
+              detail="Password salah"
+          )
+      nama = decrypt_data_aes(akun["nama"])
+      no_hp = decrypt_data_aes(akun["no_hp"])
+      token = create_token({
+          "id": akun["id"],
+          "username": akun["username"],
+          "email": akun["email"],
+          "role_akun_id": akun["role_akun_id"]
+      })
 
-    if not cekAkun.data:
-        raise HTTPException(
-            status_code=404,
-            detail="Akun tidak ditemukan"
-        )
+      return {
+          "access_token": token,
+          "token_type": "bearer",
+          "id": akun["id"],
+          "username": akun["username"],
+          "no_hp": no_hp,
+          "nama": nama,
+          "email": akun["email"],
+          "role_akun_id": akun["role_akun_id"],
+          "foto_url": akun["profil_url"]
+      }
+    except APIError as e:
+      if e.code == "PGRST116":
+          raise HTTPException(status_code=404, detail="Akun tidak ditemukan")
+      raise HTTPException(status_code=500, detail="Terjadi kesalahan server")
 
-    akun = cekAkun.data 
 
-    if not verify_password(user.password, akun["password"]):
-        raise HTTPException(
-            status_code=401,
-            detail="Password salah"
-        )
-    nama = decrypt_data_aes(akun["nama"])
-    no_hp = decrypt_data_aes(akun["no_hp"])
-    token = create_token({
-        "id": akun["id"],
-        "username": akun["username"],
-        # "no_hp": no_hp,
-        # "nama": nama,
-        "email": akun["email"],
-        "role_akun_id": akun["role_akun_id"]
-    })
-
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "id": akun["id"],
-        "username": akun["username"],
-        "no_hp": no_hp,
-        "nama": nama,
-        "email": akun["email"],
-        "role_akun_id": akun["role_akun_id"],
-        "foto_url": akun["profil_url"]
-    }
-
-MAX_FILE_SIZE_MB = 1
-MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
-SUPABASE_BUCKET = "foto-profil"
-async def edit_profile(akun_db: dict, data:UpdateAkuntModel, foto: UploadFile = None):
+async def edit_profile(akun_db: dict, data:UpdateAkuntModel):
   update_dict = {}
 
   if data.username is not None:
@@ -175,43 +176,10 @@ async def edit_profile(akun_db: dict, data:UpdateAkuntModel, foto: UploadFile = 
   if data.no_hp is not None:
     update_dict["no_hp"] = encrypt_data_aes(data.no_hp)
   
-  profile_url = None
-  if foto:
-    try:
-      content = await foto.read()
-      if len(content) > MAX_FILE_SIZE_BYTES:
-         raise HTTPException(
-            status_code=400,
-            detail=f"Ukuran foto maksimal {MAX_FILE_SIZE_MB}MB"
-         )
-      file_extension = foto.filename.split(".")[-1]
-      filename = f"{akun_db['id']}_{int(datetime.utcnow().timestamp())}.{file_extension}"
-
-      upload_result = supabase.storage.from_(SUPABASE_BUCKET).upload(
-         filename,
-         content,
-         {"content-type": foto.content_type}
-      )
-      if upload_result and upload_result.get("error"):
-         raise HTTPException(
-            status_code=500,
-            detail=f"Upload foto gagal: {upload_result['error'].get('message', 'Unknown error')}"
-         )
-      
-      public_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(filename)
-      update_dict["profil_url"] = public_url
-    except HTTPException:
-      raise
-    except Exception as e:
-        print(f"Error processing photo upload: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Terjadi kesalahan saat mengunggah foto profil"
-        )
   if not update_dict:               
     raise HTTPException(
         status_code=400,
-        detail="Tidak ada data atau foto yang diperbarui"
+        detail="Tidak ada data yang diperbarui"
     )
 
   result = supabase.table("akun").update(update_dict).eq("id", akun_db["id"]).execute()
@@ -225,10 +193,76 @@ async def edit_profile(akun_db: dict, data:UpdateAkuntModel, foto: UploadFile = 
   updated_nama = decrypt_data_aes(updated_akun["nama"]) if updated_akun["nama"] else None
   updated_no_hp = decrypt_data_aes(updated_akun["no_hp"]) if updated_akun["no_hp"] else None
 
-  final_photo_url = updated_akun.get("profil_url", None)
+  
 
+  new_token = create_token({
+    "id": updated_akun["id"],
+    "username": updated_akun["username"],
+    "email": updated_akun["email"],
+    "role_akun_id": updated_akun["role_akun_id"]
+  })
 
   return {
     "messege": "Profil berhasil diperbarui",
-    "akun": result.data[0]}
+    "access_token": new_token,
+    "token_type": "bearer",
+    "id": updated_akun["id"],
+    "username": updated_akun["username"],
+    "no_hp": updated_no_hp,
+    "nama": updated_nama,
+    "email": updated_akun["email"],
+    "role_akun_id": updated_akun["role_akun_id"],
+    "profile_photo_url": updated_akun.get("profil_url", None)
+  }
+MAX_FILE_SIZE_MB = 1
+MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+SUPABASE_BUCKET = "foto-profil"
 
+async def edit_foto(akun_db: dict, foto: UploadFile):
+    # Ambil foto lama jika ada
+    akun_id = akun_db["id"]
+    old_data = supabase.table("akun").select("profil_url").eq("id", akun_id).execute()
+
+    old_url = old_data.data[0].get("profil_url") if old_data.data else None
+
+    # Hapus foto lama dari storage jika ada
+    if old_url:
+        # Ambil nama file dari URL
+        try:
+            file_name = old_url.split("/")[-1].split("?")[0]
+            delete_result = supabase.storage.from_(SUPABASE_BUCKET).remove([file_name])
+            if delete_result.get("error"):
+                print(f"⚠️ Gagal menghapus file lama: {delete_result['error']}")
+        except Exception as e:
+            print(f"⚠️ Error parsing nama file lama: {e}")
+
+    # Upload foto baru
+    content = await foto.read()
+    if len(content) > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(status_code=400, detail="Ukuran foto maksimal 2MB")
+
+    file_ext = foto.filename.split(".")[-1]
+    new_filename = f"{akun_id}_{int(datetime.utcnow().timestamp())}.{file_ext}"
+
+    result = supabase.storage.from_(SUPABASE_BUCKET).upload(
+        new_filename,
+        content,
+        {"content-type": foto.content_type}
+    )
+
+    if hasattr(result, "error") and result.error is not None:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Upload foto gagal: {result.error.message}"
+        )
+    public_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(new_filename)
+
+    update = supabase.table("akun").update({"profil_url": public_url}).eq("id", akun_id).execute()
+
+    if not update.data:
+        raise HTTPException(status_code=500, detail="Gagal menyimpan URL foto")
+
+    return {
+        "message": "Foto profil berhasil diperbarui",
+        "profile_photo_url": public_url
+    }
