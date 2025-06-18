@@ -10,7 +10,7 @@ async def event_peserta(akun: dict):
         response = (
             supabase
             .table("event")
-            .select("id, judul, tanggal_event, jam_mulai, lokasi, harga_tiket, tipe_tiket")
+            .select("id, judul, tanggal_event, jam_mulai, lokasi, harga_tiket, tipe_tiket, foto_url")
             .is_("deleted_at", None)
             .order("created_at", desc=True)
             .execute()
