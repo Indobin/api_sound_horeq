@@ -136,6 +136,7 @@ def login_akun(user: LoginModel):
           "token_type": "bearer",
           "id": akun["id"],
           "username": akun["username"],
+          "password": akun["password"],
           "no_hp": no_hp,
           "nama": nama,
           "email": akun["email"],
