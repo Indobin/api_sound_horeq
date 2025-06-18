@@ -141,7 +141,7 @@ def login_akun(user: LoginModel):
           "nama": nama,
           "email": akun["email"],
           "role_akun_id": akun["role_akun_id"],
-          "foto_url": akun["profil_url"]
+          "profil_url": akun["profil_url"]
       }
     except APIError as e:
       if e.code == "PGRST116":
