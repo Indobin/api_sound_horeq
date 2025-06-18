@@ -11,7 +11,6 @@ async def event_peserta(akun: dict):
             supabase
             .table("event")
             .select("id, judul, tanggal_event, jam_mulai, lokasi, harga_tiket")
-            .eq("status_tiket", True)
             .is_("deleted_at", None)
             .order("created_at", desc=True)
             .execute()
