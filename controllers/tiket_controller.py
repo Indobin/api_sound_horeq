@@ -1,4 +1,4 @@
-from .base import HTTPException, supabase, load_dotenv, os, TransaksiPayload
+from .base import HTTPException, supabase, load_dotenv, os, TransaksiPayload, ScanQrPayload
 import base64, requests
 from datetime import datetime
 from uuid import uuid4
@@ -124,7 +124,8 @@ async def riwayat_tiket(akun: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-async def scan_tiket_qr(qr_code: str, akun: dict):
+async def scan_tiket_qr(payload: ScanQrPayload, akun: dict):
+    qr_code = payload.qr_code
     if akun.get("role_akun_id") != 1:
         raise HTTPException(status_code=403, detail="Hanya penyelenggara yang dapat menscan tiket.")
     try:

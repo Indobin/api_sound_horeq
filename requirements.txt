@@ -10,3 +10,4 @@ pytz
 python-dateutil
 mangum
 pycryptodome
+requests
