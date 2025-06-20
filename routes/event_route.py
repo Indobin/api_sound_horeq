@@ -17,7 +17,8 @@ async def getId_event_peserta(
  akun: dict = Depends(get_current_akun)
  ):
  return await eventId_peserta(event_id, akun)
-   
+
+
 @router.get("/penyelenggara")
 async def get_event_penyelenggara(
  akun: dict = Depends(get_current_akun)

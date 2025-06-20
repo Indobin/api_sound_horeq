@@ -16,7 +16,7 @@ async def event_peserta(akun: dict):
             .execute()
         )
 
-        return {"data": response.data}
+        return response.data
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
