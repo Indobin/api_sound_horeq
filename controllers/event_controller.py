@@ -1,4 +1,4 @@
-from .base import HTTPException, supabase, datetime
+from .base import HTTPException, supabase, datetime, Query
 from .base import CreateEventModel, UploadFile
 from typing import Optional
 
@@ -22,6 +22,7 @@ async def event_peserta(akun: dict):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 async def eventId_peserta(event_id: int, akun: dict):
     
     if akun.get("role_akun_id") != 2:
@@ -225,3 +226,27 @@ async def update_event(event_id: int, akun: dict, data: CreateEventModel, foto: 
         raise e 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Terjadi kesalahan server saat memperbarui event: {str(e)}")
+
+
+async def melihat_lokasi_peserta(akun: dict, latitude: float = Query(...), longitude: float = Query(...), lokasi: str = Query(...)):
+   
+    if not (-90 <= latitude <= 90):
+        raise HTTPException(status_code=400, detail="Latitude harus antara -90 sampai 90")
+    if not (-180 <= longitude <= 180):
+        raise HTTPException(status_code=400, detail="Longitude harus antara -180 sampai 180")
+    
+    if len(lokasi.strip()) < 10: 
+        raise HTTPException(status_code=400, detail="Alamat terlalu pendek (min 10 karakter)")
+
+    return {
+        "user_id": akun.get("id"),  
+        "pesan": "Berikut lokasi yang Anda input:",
+        "lokasi": {
+            "alamat": lokasi,
+            "koordinat": {
+                "latitude": latitude,
+                "longitude": longitude
+            }
+        },
+        "catatan": "Berhasil mengambil data lokasi peserta."
+    }

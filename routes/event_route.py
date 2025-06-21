@@ -1,6 +1,6 @@
-from .base import APIRouter, Depends, CreateEventModel, get_current_akun,UploadFile, File, Form, FastAPI, Optional
+from .base import APIRouter, Depends, CreateEventModel, get_current_akun,UploadFile, File, Form, FastAPI, Optional, Query
 from .base import create_event, event_penyelenggara, update_event
-from .base import event_peserta, eventId_peserta
+from .base import event_peserta, eventId_peserta, melihat_lokasi_peserta
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
@@ -97,3 +97,12 @@ async def update_event_penyelenggara(
     )
 
     return await update_event(event_id, akun, data, foto)
+
+@router.get("/melihat_lokasi_peserta")
+async def melihat_lokasi_peserta_endpoint(
+    latitude: float = Query(..., description="Koordinat latitude"),
+    longitude: float = Query(..., description="Koordinat longitude"),
+    lokasi: str = Query(..., description="Alamat lokasi"),
+    akun: dict = Depends(get_current_akun)
+):
+    return await melihat_lokasi_peserta(akun, latitude, longitude, lokasi)
