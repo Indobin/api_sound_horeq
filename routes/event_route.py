@@ -1,49 +1,48 @@
-from .base import APIRouter, Depends, CreateEventModel, get_current_akun,UploadFile, File, Form, FastAPI, Optional
-from .base import create_event, event_penyelenggara
+from .base import APIRouter, Depends, CreateEventModel, get_current_akun, UploadFile, File, Form, FastAPI, Optional
+from controllers.event_controller import create_event, event_penyelenggara, delete_event, event_detail_penyelenggara
 from .base import event_peserta, eventId_peserta
 from datetime import date, datetime
 from decimal import Decimal
+
 router = APIRouter(prefix="/api/events", tags=["Events"])
 
 @router.get("/peserta")
 async def get_event_peserta(
- akun: dict = Depends(get_current_akun)
- ):
- return await event_peserta(akun)
-   
-@router.get("/peserta/{id}")   
+    akun: dict = Depends(get_current_akun)
+):
+    return await event_peserta(akun)
+
+@router.get("/peserta/{id}")
 async def getId_event_peserta(
- event_id: int, 
- akun: dict = Depends(get_current_akun)
- ):
- return await eventId_peserta(event_id, akun)
-   
+    event_id: int,
+    akun: dict = Depends(get_current_akun)
+):
+    return await eventId_peserta(event_id, akun)
+
 @router.get("/penyelenggara")
 async def get_event_penyelenggara(
- akun: dict = Depends(get_current_akun)
- ):
- return await event_penyelenggara(akun)
-      
-   
+    akun: dict = Depends(get_current_akun)
+):
+    return await event_penyelenggara(akun)
+
 @router.post("/create")
 async def create_event_penyelenggara(
- akun: dict = Depends(get_current_akun),
- judul: str = Form(...),
- deskripsi: str = Form(...),
- tanggal_event: date = Form(...),
- jam_mulai: str = Form(...),
- durasi_event: int = Form(...),
- harga_tiket: Optional[str] = Form(0.0),
- jumlah_tiket: int = Form(...),
- tipe_tiket: int = Form(...),
- lokasi: str = Form(...),
- latitude: float = Form(...),
- longitude: float = Form(...),
- foto: UploadFile = File(...)
- ):
- harga_decimal = Decimal(harga_tiket) if harga_tiket else 0.0
- data = CreateEventModel(
-        
+    akun: dict = Depends(get_current_akun),
+    judul: str = Form(...),
+    deskripsi: str = Form(...),
+    tanggal_event: date = Form(...),
+    jam_mulai: str = Form(...),
+    durasi_event: int = Form(...),
+    harga_tiket: Optional[str] = Form(0.0),
+    jumlah_tiket: int = Form(...),
+    tipe_tiket: int = Form(...),
+    lokasi: str = Form(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    foto: UploadFile = File(...)
+):
+    harga_decimal = Decimal(harga_tiket) if harga_tiket else 0.0
+    data = CreateEventModel(
         judul=judul,
         deskripsi=deskripsi,
         tanggal_event=tanggal_event,
@@ -56,5 +55,16 @@ async def create_event_penyelenggara(
         latitude=latitude,
         longitude=longitude,
     )
+    return await create_event(akun, data, foto)
 
- return await create_event(akun, data, foto)
+
+@router.delete("/penyelenggara/{event_id}")
+async def delete_event_penyelenggara(
+    event_id: int,
+    akun: dict = Depends(get_current_akun)
+):
+    return await delete_event(event_id, akun)
+
+@router.get("/penyelenggara/event/{event_id}/detail")
+async def get_event_detail(event_id: int, akun: dict = Depends(get_current_akun)):
+    return await event_detail_penyelenggara(event_id, akun)
