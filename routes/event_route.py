@@ -106,3 +106,21 @@ async def melihat_lokasi_peserta_endpoint(
     akun: dict = Depends(get_current_akun)
 ):
     return await melihat_lokasi_peserta(akun, latitude, longitude, lokasi)
+
+
+    harga_decimal = Decimal(harga_tiket) if harga_tiket is not None else 0.0  # Periksa None
+    
+    data = CreateEventModel(
+        judul=judul,
+        deskripsi=deskripsi,
+        tanggal_event=tanggal_event,
+        jam_mulai=datetime.strptime(jam_mulai, "%H:%M:%S").time(),
+        durasi_event=durasi_event,
+        harga_tiket=harga_decimal,
+        jumlah_tiket=jumlah_tiket,
+        tipe_tiket=tipe_tiket,
+        lokasi=lokasi,
+        latitude=latitude,
+        longitude=longitude,
+    )
+    return await update_event(event_id, akun, data, foto)

@@ -125,6 +125,29 @@ async def create_event(akun: dict, data: CreateEventModel, foto: UploadFile):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
 
+async def melihat_lokasi_peserta(akun: dict, latitude: float = Query(...), longitude: float = Query(...), lokasi: str = Query(...)):
+   
+    if not (-90 <= latitude <= 90):
+        raise HTTPException(status_code=400, detail="Latitude harus antara -90 sampai 90")
+    if not (-180 <= longitude <= 180):
+        raise HTTPException(status_code=400, detail="Longitude harus antara -180 sampai 180")
+    
+    if len(lokasi.strip()) < 10: 
+        raise HTTPException(status_code=400, detail="Alamat terlalu pendek (min 10 karakter)")
+
+    return {
+        "user_id": akun.get("id"),  
+        "pesan": "Berikut lokasi yang Anda input:",
+        "lokasi": {
+            "alamat": lokasi,
+            "koordinat": {
+                "latitude": latitude,
+                "longitude": longitude
+            }
+        },
+        "catatan": "Berhasil mengambil data lokasi peserta."
+    }
+
 async def update_event(event_id: int, akun: dict, data: CreateEventModel, foto: Optional[UploadFile]):
     try:
         # Validasi role akun
@@ -149,15 +172,25 @@ async def update_event(event_id: int, akun: dict, data: CreateEventModel, foto: 
 
         existing_event = response_existing_event.data[0]
 
-        # Validasi kepemilikan event
         if existing_event["akun_id"] != akun["id"]:
             raise HTTPException(status_code=403, detail="Anda tidak memiliki izin untuk mengedit event ini.")
 
-        # Validasi tanggal event
+        response_transactions = (
+            supabase
+            .table("transaksi")
+            .select("id")
+            .eq("event_id", event_id)
+            .execute()
+        )
+
+        if hasattr(response_transactions, 'error') and response_transactions.error:
+            raise HTTPException(status_code=500, detail=f"Gagal memeriksa transaksi: {response_transactions.error.message}")
+
+        can_edit_all = not response_transactions.data  
+
         if data.tanggal_event < datetime.now().date():
             raise HTTPException(status_code=400, detail="Tanggal event tidak boleh di masa lalu.")
 
-        # Validasi harga tiket
         if data.harga_tiket is not None and data.harga_tiket < 0:
             raise HTTPException(status_code=400, detail="Harga tiket tidak boleh negatif.")
 
@@ -188,24 +221,35 @@ async def update_event(event_id: int, akun: dict, data: CreateEventModel, foto: 
 
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Terjadi kesalahan saat memproses foto: {str(e)}")
+        event_update_data = {}
 
-        # Siapkan data untuk pembaruan event
-        event_update_data = {
-            "judul": data.judul,
-            "deskripsi": data.deskripsi,
-            "tanggal_event": data.tanggal_event.isoformat(),
-            "jam_mulai": data.jam_mulai.isoformat(),
-            "durasi_event": data.durasi_event,
-            "jumlah_tiket": data.jumlah_tiket,
-            "tipe_tiket": data.tipe_tiket,
-            "lokasi": data.lokasi,
-            "latitude": data.latitude,
-            "longitude": data.longitude,
-            "foto_url": new_foto_url,
-            "harga_tiket": float(data.harga_tiket) if data.harga_tiket is not None else 0.0
-        }
+        if can_edit_all:
+            event_update_data = {
+                "judul": data.judul,
+                "deskripsi": data.deskripsi,
+                "tanggal_event": data.tanggal_event.isoformat(),
+                "jam_mulai": data.jam_mulai.isoformat(),
+                "durasi_event": data.durasi_event,
+                "jumlah_tiket": data.jumlah_tiket,
+                "tipe_tiket": data.tipe_tiket,
+                "lokasi": data.lokasi,
+                "latitude": data.latitude,
+                "longitude": data.longitude,
+                "foto_url": new_foto_url,
+                "harga_tiket": float(data.harga_tiket) if data.harga_tiket is not None else 0.0
+            }
+            return {"message": "Anda berhasil mengedit semuanya", "data": event_update_data}
+        else:
+            event_update_data = {
+                "judul": data.judul,
+                "deskripsi": data.deskripsi,
+                "lokasi": data.lokasi,
+                "latitude": data.latitude,
+                "longitude": data.longitude,
+                "foto_url": new_foto_url,
+            }
+            return {"message": "Mohon maaf anda hanya dapat merubah bagian judul, deskripsi, lokasi, latitude, dan longitude", "data": event_update_data}
 
-        # Perbarui event di database
         response_update = (
             supabase.table("event")
             .update(event_update_data)
@@ -226,27 +270,3 @@ async def update_event(event_id: int, akun: dict, data: CreateEventModel, foto: 
         raise e 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Terjadi kesalahan server saat memperbarui event: {str(e)}")
-
-
-async def melihat_lokasi_peserta(akun: dict, latitude: float = Query(...), longitude: float = Query(...), lokasi: str = Query(...)):
-   
-    if not (-90 <= latitude <= 90):
-        raise HTTPException(status_code=400, detail="Latitude harus antara -90 sampai 90")
-    if not (-180 <= longitude <= 180):
-        raise HTTPException(status_code=400, detail="Longitude harus antara -180 sampai 180")
-    
-    if len(lokasi.strip()) < 10: 
-        raise HTTPException(status_code=400, detail="Alamat terlalu pendek (min 10 karakter)")
-
-    return {
-        "user_id": akun.get("id"),  
-        "pesan": "Berikut lokasi yang Anda input:",
-        "lokasi": {
-            "alamat": lokasi,
-            "koordinat": {
-                "latitude": latitude,
-                "longitude": longitude
-            }
-        },
-        "catatan": "Berhasil mengambil data lokasi peserta."
-    }
