@@ -1,4 +1,4 @@
-from fastapi import HTTPException, UploadFile, File
+from fastapi import HTTPException, UploadFile, File, Query
 from models.akun_models import RegisterModel, LoginModel, UpdateAkuntModel
 from models.event_models import CreateEventModel
 from models.forum_models import CreateForumModels
