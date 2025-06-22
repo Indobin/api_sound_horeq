@@ -5,16 +5,17 @@ class RegisterModel(BaseModel):
     username: constr(min_length=3, max_length=30)
     password: constr(min_length=8)
     email: EmailStr
-    role_akun: int
+    role_akun_id: int
     nama: constr(min_length=3, max_length=100)
     no_hp: constr(min_length=10, max_length=15)
+   
     class Config:
         json_schema_extra = {
             "example": {
                 "username": "satya123",
                 "password": "securePassword123",
                 "email": "satya@example.com",
-                "role_akun": 1,
+                "role_akun_id": 1,
                 "nama": "Satya Bintang",
                 "no_hp": "081234567890",
             }

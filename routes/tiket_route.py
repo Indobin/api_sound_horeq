@@ -1,5 +1,5 @@
 from .base import APIRouter, Depends, get_current_akun, TransaksiPayload, ScanQrPayload
-from .base import transaksi, riwayat_tiket, scan_tiket_qr
+from .base import transaksi, riwayat_tiket, scan_tiket_qr, transaksi_gratis
 router = APIRouter(prefix="/api/tiket", tags=["Tiket"])
 
 @router.post("/transaksi/{event_id}/bayar")
@@ -9,6 +9,14 @@ async def bayar_event(
     akun: dict = Depends(get_current_akun)
 ):
     return await transaksi(event_id, payload, akun)
+
+@router.post("/transaksi/{event_id}/gratis")
+async def gratis_event(
+    event_id: int,
+    payload: TransaksiPayload,
+    akun: dict = Depends(get_current_akun)
+):
+    return await transaksi_gratis(event_id, payload, akun)
 
 @router.get("/riwayat")
 async def get_riwayat(

@@ -97,7 +97,7 @@ def register_akun(user: RegisterModel):
   "username": user.username,
   "email": user.email,
   "password": hashed_pw,
-  "role_akun_id": user.role_akun,
+  "role_akun_id": user.role_akun_id,
   "nama": nama_encrypted,
   "no_hp": hp_encrypted,
   "profil_url": None,
@@ -228,14 +228,15 @@ async def edit_foto(akun_db: dict, foto: UploadFile):
 
     # Hapus foto lama dari storage jika ada
     if old_url:
-        # Ambil nama file dari URL
-        try:
-            file_name = old_url.split("/")[-1].split("?")[0]
-            delete_result = supabase.storage.from_(SUPABASE_BUCKET).remove([file_name])
-            if delete_result.get("error"):
-                print(f"⚠️ Gagal menghapus file lama: {delete_result['error']}")
-        except Exception as e:
-            print(f"⚠️ Error parsing nama file lama: {e}")
+      try:
+          file_name = old_url.split("/")[-1].split("?")[0]
+          delete_result = supabase.storage.from_(SUPABASE_BUCKET).remove([file_name])
+          if isinstance(delete_result, list) and len(delete_result) > 0:
+              print(f"✅ File lama berhasil dihapus: {file_name}")
+          else:
+              print("⚠️ Gagal menghapus file lama (atau tidak ditemukan)")
+      except Exception as e:
+        print(f"⚠️ Error parsing nama file lama: {e}")
 
     # Upload foto baru
     content = await foto.read()

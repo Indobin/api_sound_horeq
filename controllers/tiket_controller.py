@@ -24,7 +24,9 @@ async def transaksi(event_id: int, payload: TransaksiPayload, akun: dict):
 
     if not event_data:
         raise HTTPException(status_code=404, detail="Event tidak ditemukan")
-
+    if event_data[0]["tipe_tiket"] == 1:
+        raise HTTPException(status_code=400, detail="Tiket gratis, tidak perlu ada pembayaran")
+    
     event = event_data[0]
 
     # Cek ketersediaan tiket
@@ -70,7 +72,6 @@ async def transaksi(event_id: int, payload: TransaksiPayload, akun: dict):
 
     res = r.json()
 
-    # Karena sandbox, kita langsung anggap "settlement"
     trx = supabase.table("transaksi").insert({
         "order_id": order_id,
         "akun_id": akun["id"],
@@ -80,12 +81,12 @@ async def transaksi(event_id: int, payload: TransaksiPayload, akun: dict):
         "status": "berhasil"
     }).execute().data[0]
 
-    # Update sisa tiket
+   
     supabase.table("event").update({
         "jumlah_tiket": event["jumlah_tiket"] - qty
     }).eq("id", event_id).execute()
 
-    # Buat QR tiket
+    
     tiket_qr = []
     for _ in range(qty):
         tiket_qr.append({
@@ -107,6 +108,67 @@ async def transaksi(event_id: int, payload: TransaksiPayload, akun: dict):
         "tiket_qr": tiket_qr
     }
 
+async def transaksi_gratis(event_id: int, payload: TransaksiPayload, akun: dict):
+    if akun.get("role_akun_id") != 2:
+        raise HTTPException(status_code=403, detail="Hanya peserta yang dapat membeli tiket.")
+
+    qty = payload.qty
+    if qty <= 0:
+        raise HTTPException(status_code=400, detail="Qty tidak valid")
+
+    event_data = (
+        supabase
+        .table("event")
+        .select("id, judul, harga_tiket, jumlah_tiket, tipe_tiket")
+        .eq("id", event_id)
+        .is_("deleted_at", None)
+        .execute()
+    ).data
+
+    if not event_data:
+        raise HTTPException(status_code=404, detail="Event tidak ditemukan")
+    if event_data[0]["tipe_tiket"] == 2:
+        raise HTTPException(status_code=400, detail="Tiket berbayar, harus ada pembayaran")
+    event = event_data[0]
+
+    # Cek ketersediaan tiket
+    if event["jumlah_tiket"] is None or event["jumlah_tiket"] < qty:
+        raise HTTPException(status_code=400, detail="Jumlah tiket tidak mencukupi")
+    
+    harga_total = event["harga_tiket"] * qty
+    order_id = f"ORDER-{event_id}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+    trx = supabase.table("transaksi").insert({
+        "order_id": order_id,
+        "akun_id": akun["id"],
+        "event_id": event_id,
+        "qty": qty,
+        "harga_total": harga_total,
+        "status": "berhasil"
+    }).execute().data[0]
+
+    supabase.table("event").update({
+        "jumlah_tiket": event["jumlah_tiket"] - qty
+    }).eq("id", event_id).execute()
+
+    tiket_qr = []
+    for _ in range(qty):
+        tiket_qr.append({
+            "transaksi_id": trx["id"],
+            "qr_code": str(uuid4()),
+            "status": "unused"
+        })
+    supabase.table("tiket_terbit").insert(tiket_qr).execute()
+
+    return {
+        "order_id": order_id,
+        "harga_total": harga_total,
+        "event": {
+            "judul": event["judul"],
+            "qty": qty
+        },
+        "tiket_qr": tiket_qr
+    }
 async def riwayat_tiket(akun: dict):
     if akun.get("role_akun_id") != 2:
         raise HTTPException(status_code=403, detail="Hanya peserta yang dapat melihat riwayat tiket.")
@@ -128,30 +190,29 @@ async def scan_tiket_qr(payload: ScanQrPayload, akun: dict):
     qr_code = payload.qr_code
     if akun.get("role_akun_id") != 1:
         raise HTTPException(status_code=403, detail="Hanya penyelenggara yang dapat menscan tiket.")
-    try:
-        tiket_data = (
-            supabase
-            .table("tiket_terbit")
-            .select("id, status, transaksi(event(akun_id))")
-            .eq("qr_code", qr_code)
-            .limit(1)
-            .execute()
-        ).data
 
-        if not tiket_data:
-            raise HTTPException(status_code=404, detail="Tiket tidak ditemukan")
+    tiket_data = (
+        supabase
+        .table("tiket_terbit")
+        .select("id, status, transaksi(event(akun_id))")
+        .eq("qr_code", qr_code)
+        .limit(1)
+        .execute()
+    ).data
 
-        tiket = tiket_data[0]
-        penyelenggara_id = tiket["transaksi"]["event"]["akun_id"]
-        if penyelenggara_id != akun["id"]:
-            raise HTTPException(status_code=403, detail="Anda tidak berhak menscan tiket ini!")
-        
-        if tiket["status"] == "used":
-            raise HTTPException(status_code=400, detail="Tiket sudah digunakan")
+    if not tiket_data:
+        raise HTTPException(status_code=404, detail="Tiket tidak ditemukan")
 
-        supabase.table("tiket_terbit").update({"status": "used"}).eq("id", tiket["id"]).execute()
+    tiket = tiket_data[0]
+    penyelenggara_id = tiket.get("transaksi", {}).get("event", {}).get("akun_id")
 
-        return {"message": "Tiket valid dan berhasil digunakan"}
+    if penyelenggara_id != akun["id"]:
+        raise HTTPException(status_code=403, detail="Anda tidak berhak menscan tiket ini!")
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    if tiket["status"] == "used":
+        raise HTTPException(status_code=400, detail="Tiket sudah digunakan")
+
+    supabase.table("tiket_terbit").update({"status": "used"}).eq("id", tiket["id"]).execute()
+
+    return {"message": "Tiket valid dan berhasil digunakan"}
+
