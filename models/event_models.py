@@ -14,19 +14,15 @@ class CreateEventModel(BaseModel):
     latitude: float
     longitude: float
 
-    # class Config:
-    #     json_schema_extra = {
-    #         "example": {
-    #             "judul": "Event Sound Horeq",
-    #             "deskripsi": "Event ini dibuat untuk menyatukan komunitas sound system.",
-    #             "tanggal_event": "2025-08-01",
-    #             "jam_mulai": "18:00",
-    #             "durasi_event": 3,
-    #             "harga_tiket": 15000.0,
-    #             "jumlah_tiket": 200,
-    #             "status_tiket": True,
-    #             "lokasi": "Alun-alun Jember",
-    #             "latitude": -8.184486,
-    #             "longtitude": 113.668075
-    #         }
-    #     }
+class UpdateEventModel(BaseModel):
+    judul: Optional[constr(min_length=3, max_length=100)]
+    deskripsi: Optional[constr(min_length=10, max_length=1000)]
+    tanggal_event: Optional[date]
+    jam_mulai: Optional[time]
+    durasi_event: Optional[int]
+    harga_tiket: Optional[condecimal(ge=0)] = None
+    jumlah_tiket: Optional[int]
+    tipe_tiket: Optional[int]
+    lokasi: Optional[constr(min_length=3, max_length=100)]
+    latitude: Optional[float]
+    longitude: Optional[float]

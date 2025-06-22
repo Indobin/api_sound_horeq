@@ -16,7 +16,7 @@ async def transaksi(event_id: int, payload: TransaksiPayload, akun: dict):
     event_data = (
         supabase
         .table("event")
-        .select("id, judul, harga_tiket, jumlah_tiket")
+        .select("id, judul, harga_tiket, jumlah_tiket, tipe_tiket")
         .eq("id", event_id)
         .is_("deleted_at", None)
         .execute()
