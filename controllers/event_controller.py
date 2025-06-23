@@ -253,3 +253,93 @@ async def update_event(id: int, akun: dict,
         return {"message": "Event berhasil diperbarui", "data": response.data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Server error: {str(e)}")
+
+async def delete_event(event_id: int, akun: dict):
+    if akun.get("role_akun_id") != 1:
+        raise HTTPException(status_code=403, detail="Hanya penyelenggara yang dapat menghapus event.")
+
+    try:
+        event = (
+            supabase
+            .table("event")
+            .select("id, akun_id")
+            .eq("id", event_id)
+            .is_("deleted_at", None)
+            .single()
+            .execute()
+        )
+
+        if not event.data:
+            raise HTTPException(status_code=404, detail="Event tidak ditemukan atau sudah dihapus.")
+
+        if event.data["akun_id"] != akun["id"]:
+            raise HTTPException(status_code=403, detail="Anda tidak memiliki izin untuk menghapus event ini.")
+        transaki = supabase.table("transaksi").select("id").eq("event_id", event_id).limit(1).execute()
+        if transaki.data:
+            raise HTTPException(status_code=400, detail="Event ini sudah memiliki transaksi, tidak dapat dihapus.")
+        deleted_at = datetime.utcnow().isoformat()
+
+        supabase \
+            .table("event") \
+            .update({"deleted_at": deleted_at}) \
+            .eq("id", event_id) \
+            .execute()
+
+        return {"message": "Event berhasil dihapus."}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal menghapus event: {str(e)}")
+
+async def event_detail_penyelenggara(event_id: int, akun: dict):
+    if akun.get("role_akun_id") != 1:
+        raise HTTPException(status_code=403, detail="Hanya penyelenggara yang dapat mengakses data ini.")
+
+    try:
+        # Ambil detail event
+        event_response = (
+            supabase
+            .table("event")
+            .select("*")
+            .eq("id", event_id)
+            .is_("deleted_at", None)
+            .single()
+            .execute()
+        )
+
+        if not event_response.data:
+            raise HTTPException(status_code=404, detail="Event tidak ditemukan.")
+
+        if event_response.data["akun_id"] != akun["id"]:
+            raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke event ini.")
+
+        event_data = event_response.data
+
+        # Ambil data transaksi yang berhasil
+        transaksi_response = (
+            supabase
+            .table("transaksi")
+            .select("qty, harga_total")
+            .eq("event_id", event_id)
+            .eq("status", "berhasil")  # sesuaikan dengan status sukses di sistemmu
+            .execute()
+        )
+
+        transaksi_data = transaksi_response.data or []
+
+        total_tiket_terjual = sum([row["qty"] for row in transaksi_data])
+        total_pendapatan = sum([float(row["harga_total"]) for row in transaksi_data])
+
+        # Gabungkan semua data
+        return {
+            "data": {
+                "tanggal_event": event_data["tanggal_event"],
+                "jam_mulai": event_data["jam_mulai"],
+                "lokasi": event_data["lokasi"],
+                "jumlah_tiket": event_data["jumlah_tiket"],
+                "total_tiket_terjual": total_tiket_terjual,
+                "total_pendapatan": total_pendapatan
+            }
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal mengambil detail event: {str(e)}")

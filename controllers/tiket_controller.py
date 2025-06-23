@@ -176,7 +176,7 @@ async def riwayat_tiket(akun: dict):
         response = (
             supabase
             .table("tiket_terbit")
-            .select("qr_code, status, transaksi(event(id,judul, tanggal_event, jam_mulai, lokasi, foto_url))")
+            .select("qr_code, status, transaksi(event(id,judul, tanggal_event, jam_mulai, lokasi))")
             .eq("transaksi.akun_id", akun["id"])
             .execute()
         )

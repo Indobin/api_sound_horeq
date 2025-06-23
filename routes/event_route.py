@@ -1,5 +1,5 @@
 from .base import APIRouter, Depends, CreateEventModel, UpdateEventModel, get_current_akun,UploadFile, File, Form, FastAPI, Optional, Query
-from .base import create_event, event_penyelenggara, update_event, eventId_penyelenggara
+from .base import create_event, event_penyelenggara, update_event, eventId_penyelenggara, delete_event, event_detail_penyelenggara
 from .base import event_peserta, eventId_peserta, lokasi_event
 from datetime import date, datetime
 from decimal import Decimal
@@ -91,6 +91,21 @@ async def update_event_route(
 
 
     # return await update_event(event_id, akun, form_data, foto)
+
+@router.delete("/delete/{event_id}")
+async def delete_event_route(
+  event_id: int, 
+  akun: dict = Depends(get_current_akun)
+  ):
+    return await delete_event(event_id, akun)
+
+@router.get("/penyelenggara/detail/{event_id}")
+async def get_event_detail(
+  event_id: int, 
+  akun: dict = Depends(get_current_akun)
+  ):
+ return await event_detail_penyelenggara(event_id, akun)
+
 @router.get("/lokasi-event")
 async def lokasi(
     akun: dict = Depends(get_current_akun)
