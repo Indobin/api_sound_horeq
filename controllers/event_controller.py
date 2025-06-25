@@ -12,7 +12,7 @@ async def event_peserta(akun: dict):
         response = (
             supabase
             .table("event")
-            .select("id, judul, tanggal_event, jam_mulai, lokasi, harga_tiket, tipe_tiket, foto_url")
+            .select("*")
             .is_("deleted_at", None)
             .order("created_at", desc=True)
             .execute()
@@ -291,55 +291,66 @@ async def delete_event(event_id: int, akun: dict):
         raise HTTPException(status_code=500, detail=f"Gagal menghapus event: {str(e)}")
 
 async def event_detail_penyelenggara(event_id: int, akun: dict):
+    # Validasi role penyelenggara
     if akun.get("role_akun_id") != 1:
         raise HTTPException(status_code=403, detail="Hanya penyelenggara yang dapat mengakses data ini.")
 
     try:
-        # Ambil detail event
-        event_response = (
+        # Ambil data event
+        event_query = (
             supabase
             .table("event")
-            .select("*")
+            .select(
+                "judul, deskripsi, tanggal_event, jam_mulai, lokasi, jumlah_tiket, "
+                "harga_tiket, durasi_event, foto_url, tipe_tiket, akun_id"
+            )
             .eq("id", event_id)
             .is_("deleted_at", None)
             .single()
             .execute()
         )
 
-        if not event_response.data:
+        event_data = event_query.data
+
+        if not event_data:
             raise HTTPException(status_code=404, detail="Event tidak ditemukan.")
 
-        if event_response.data["akun_id"] != akun["id"]:
+        # Cek apakah event milik akun penyelenggara ini
+        if event_data["akun_id"] != akun["id"]:
             raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke event ini.")
 
-        event_data = event_response.data
-
-        # Ambil data transaksi yang berhasil
-        transaksi_response = (
+        # Ambil transaksi yang berhasil
+        transaksi_query = (
             supabase
             .table("transaksi")
             .select("qty, harga_total")
             .eq("event_id", event_id)
-            .eq("status", "berhasil")  # sesuaikan dengan status sukses di sistemmu
+            .eq("status", "berhasil")
             .execute()
         )
 
-        transaksi_data = transaksi_response.data or []
+        transaksi_data = transaksi_query.data or []
 
-        total_tiket_terjual = sum([row["qty"] for row in transaksi_data])
-        total_pendapatan = sum([float(row["harga_total"]) for row in transaksi_data])
+        total_tiket_terjual = sum(row["qty"] for row in transaksi_data)
+        total_pendapatan = sum(float(row["harga_total"]) for row in transaksi_data)
 
-        # Gabungkan semua data
-        return {
-            "data": {
-                "tanggal_event": event_data["tanggal_event"],
-                "jam_mulai": event_data["jam_mulai"],
-                "lokasi": event_data["lokasi"],
-                "jumlah_tiket": event_data["jumlah_tiket"],
-                "total_tiket_terjual": total_tiket_terjual,
-                "total_pendapatan": total_pendapatan
-            }
+        # Siapkan data respon tanpa akun_id
+        response_data = {
+            "judul": event_data["judul"],
+            "deskripsi": event_data["deskripsi"],
+            "foto_url": event_data["foto_url"],
+            "durasi_event": event_data["durasi_event"],
+            "harga_tiket": event_data["harga_tiket"],
+            "tipe_tiket": event_data["tipe_tiket"],
+            "tanggal_event": event_data["tanggal_event"],
+            "jam_mulai": event_data["jam_mulai"],
+            "lokasi": event_data["lokasi"],
+            "jumlah_tiket": event_data["jumlah_tiket"],
+            "total_tiket_terjual": total_tiket_terjual,
+            "total_pendapatan": total_pendapatan
         }
+
+        return {"data": response_data}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal mengambil detail event: {str(e)}")
